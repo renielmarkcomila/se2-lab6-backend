@@ -52,6 +52,7 @@ app.post("/moods", async (req, res) => {    const { mood } = req.body;
     }
 });
 
-app.listen(8081, () => {
-    console.log("Server is bumping on port 8081, sah!");
+const PORT = process.env.PORT || 8081;
+app.listen(PORT, () => {
+    console.log(`Server is bumping on port ${PORT}, sah!`);
 });

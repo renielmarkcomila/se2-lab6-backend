@@ -1,16 +1,15 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai"); // Essential Import!
+const express = require("express");
+const mysql = require("mysql2");
+const cors = require("cors");
+const dotenv = require("dotenv");
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. Initialize Gemini with your key from .env
+// 1. Initialize Gemini with your key from Render Environment
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -23,8 +22,9 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT
 });
 
-// 3. The "Real AI" Route
-app.post("/moods", async (req, res) => {    const { mood } = req.body;
+// 3. The "Real AI" Route (Matching your Vue frontend call)
+app.post("/moods", async (req, res) => {
+    const { mood } = req.body;
 
     try {
         // AI Logic: Actually generating a response now, G!
@@ -39,6 +39,7 @@ app.post("/moods", async (req, res) => {    const { mood } = req.body;
                 console.error("DB Error:", err);
                 return res.status(500).json(err);
             }
+            
             // Return the REAL AI message to your Vue frontend
             return res.json({
                 message: "Success!",
@@ -52,6 +53,7 @@ app.post("/moods", async (req, res) => {    const { mood } = req.body;
     }
 });
 
+// 4. Dynamic Port for Render Deployment
 const PORT = process.env.PORT || 8081;
 app.listen(PORT, () => {
     console.log(`Server is bumping on port ${PORT}, sah!`);

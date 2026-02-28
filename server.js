@@ -1,12 +1,20 @@
-require('dotenv').config();
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const dotenv = require('dotenv');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 1. Initialize Gemini with your key from .env
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// 2. Database Connection (Using your existing Railway setup)
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -15,38 +23,35 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT
 });
 
-db.connect(err => {
-    if (err) return console.error("❌ DB Connection failed:", err);
-    console.log("✅ Connected to Railway MySQL!");
-});
+// 3. The "Real AI" Route
+app.post("/moods", async (req, res) => {    const { mood } = req.body;
 
-app.get('/moods', (req, res) => {
-    db.query('SELECT * FROM moods ORDER BY created_at DESC', (err, results) => {
-        if (err) return res.status(500).send(err);
-        res.json(results);
-    });
-});
+    try {
+        // AI Logic: Actually generating a response now, G!
+        const prompt = `The user says they are feeling: "${mood}". Give a very short, supportive, and empathetic response (max 2 sentences).`;
+        const result = await model.generateContent(prompt);
+        const aiResponse = result.response.text();
 
-app.post('/moods', (req, res) => {
-    const { mood_level, journal_entry } = req.body;
-    
-    // 🤖 AI Logic for Lab 6 Verification
-    let ai_suggestion = "";
-    if (mood_level <= 3) ai_suggestion = "It sounds like a tough day. Take a deep breath and remember it's okay to rest. 🌿";
-    else if (mood_level <= 6) ai_suggestion = "You're holding steady. Small steps are still progress! ✨";
-    else if (mood_level <= 8) ai_suggestion = "Solid energy! Keep focusing on what makes you happy. 🚀";
-    else ai_suggestion = "Incredible vibes! You're absolutely glowing today! 🔥";
-
-    const query = 'INSERT INTO moods (mood_level, journal_entry) VALUES (?, ?)';
-    db.query(query, [mood_level, journal_entry], (err, result) => {
-        if (err) return res.status(500).send(err);
-        // Send the AI response back to the frontend
-        res.status(201).send({ 
-            message: 'Mood recorded!', 
-            ai_response: ai_suggestion 
+        // Save to MySQL
+        const sql = "INSERT INTO moods (mood_text, ai_response) VALUES (?, ?)";
+        db.query(sql, [mood, aiResponse], (err, data) => {
+            if (err) {
+                console.error("DB Error:", err);
+                return res.status(500).json(err);
+            }
+            // Return the REAL AI message to your Vue frontend
+            return res.json({
+                message: "Success!",
+                ai_response: aiResponse
+            });
         });
-    });
+
+    } catch (error) {
+        console.error("Gemini Error:", error);
+        res.status(500).json({ error: "The AI is sleepy right now." });
+    }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server vibing on port ${PORT}`));
+app.listen(8081, () => {
+    console.log("Server is bumping on port 8081, sah!");
+});
